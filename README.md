@@ -4,20 +4,20 @@ Server Density compatible Windows Agent. We currently have this agent running on
 ## Requirements
 
 - A Windows Machine
-- .NET 4.0 minimum
+- .NET 4.7.2 minimum
 - Server Density Account
 
 # Installation
 
 ## Automated installation
 
-There is a seperate project - [Tether.Installer](https://github.com/surgicalcoder/tether.installer) - that automates the installation and provisioning of a machine through the Server Density API. While there are more instructions on the project, you can use the following powershell script to automatically download and install Tether, using the latest builds:
+There is a separate project - [Tether.Installer](https://github.com/surgicalcoder/tether.installer) - that automates the installation and provisioning of a machine through the Server Density API. While there are more instructions on the project, you can use the following powershell script to automatically download and install Tether, using the latest builds:
 
-      $source = "https://ci.appveyor.com/api/projects/surgicalcoder/tether-installer/artifacts/SDInstaller.exe" 
+      $source = "https://ci.appveyor.com/api/projects/surgicalcoder/tether-installer/artifacts/SDInstaller.exe"
       $destination = "c:\SDInstaller.exe"
       $WebClient = New-Object System.Net.WebClient
       $WebClient.DownloadFile( $source, $destination )
-      Start-Process -FilePath $destination -ArgumentList '((APIKEY))','https://ci.appveyor.com/api/projects/surgicalcoder/tether/artifacts/Tether%2Fbin%2FBuild.zip','C:\Tether' -NoNewWindow -Wait
+      Start-Process -FilePath $destination -ArgumentList '((APIKEY))','https://ci.appveyor.com/api/projects/serverdensity/tether/artifacts/Tether%2Fbin%2FBuild.zip','C:\Tether' -NoNewWindow -Wait
       Remove-Item $destination
 
 Replace ((APIKEY)) with an API key you have retrieved from Server Density - [You can find more information about this here](https://developer.serverdensity.com/reference#getting-a-token-via-the-ui). You may also want to update the other parameters (for example, installation location which in this example is C:\Tether).
@@ -26,9 +26,9 @@ This will automatically download Tether, the Tether installer, and install it to
 
 ## Manual Installation Instructions
 
-Grab a build, either build yourself or from the AppVeyor link at the bottom of this page (I've tested this only with Visual Studio 2017, but it should work with other versions, your mileage may vary), and it should produce you some files in the bin/Debug folder. 
+Grab a build, either build yourself or from the AppVeyor link at the bottom of this page (I've tested this only with Visual Studio 2017, but it should work with other versions, your mileage may vary), and it should produce you some files in the bin/Debug folder.
 
-Copy these to your server or servers, put into a directory, then edit settings: 
+Copy these to your server or servers, put into a directory, then edit settings:
 
 ### Editing settings
 
@@ -37,23 +37,37 @@ Edit your settings.json, and you will need to change at least the following:
     "ServerDensityUrl": "https://{account}.agent.serverdensity.io/intake/?agent_key={agentkey}",
     "ServerDensityKey": "{agentkey}",
 
-and put in your SD account name in there, and Server's Key.
+and put in your SD account name in there, and Agent Key.
+
+For example:
+
+    "ServerDensityUrl": "https://example.agent.serverdensity.io/intake/?agent_key=1234b36fadcacb07d0c7c1111767afee",
+    "ServerDensityKey": "1234b36fadcacb07d0c7c1111767afee",
 
 ### Configuration - Logging Level
 
-By default, the logging level is a bit too low, it will log everything it will send, into the logs folder. While you may wish to keep this, its suggested that you drop this. You can do this by editing Tether.exe.config, by changing:
-
-      <logger name="*" minLevel="Trace" appendTo="console" />
-      <logger name="*" minLevel="Trace" appendTo="file" />
-      <logger name="*" minLevel="Trace" appendTo="selectiveFile" />
-
-to
+By default, the logging level is set to Error, which is defined in `Tether.exe.config`:
 
       <logger name="*" minLevel="Error" appendTo="console" />
       <logger name="*" minLevel="Error" appendTo="file" />
       <logger name="*" minLevel="Error" appendTo="selectiveFile" />
 
+It's possible to change the log level by updating `Tether.exe.config` with the new logging level, for example, to log everything you can use `Trace`:
+
+      <logger name="*" minLevel="Trace" appendTo="console" />
+      <logger name="*" minLevel="Trace" appendTo="file" />
+      <logger name="*" minLevel="Trace" appendTo="selectiveFile" />
+
 > NOTE: There are 3 separate loggers, one  that outputs to console (ie. if you are not running in Windows Services Mode), one for a file that contains all the levels, and one that will produce you a Warning only file, a Debug only file etc.
+
+The following are the allowed log levels (in order of verbosity, ascending):
+
+* Fatal
+* Error
+* Warn
+* Info
+* Debug
+* Trace
 
 ### Installation
 
@@ -81,33 +95,33 @@ You can also run this as a command line, and not through Windows Services, simpl
 
 By default, depending on how you built this, you will just get the basic SD compatible plugin, if you want some deeper system stats, build **Tether.CoreSlices**, create a **plugins** folder, and put the dll in there.
 
-We have essentially the same interface as Server Density's windows agent. 
+We have essentially the same interface as Server Density's windows agent.
 
-### Addtional Plugins
+### Additional Plugins
 
-A seperate GitHub project - [Tether.Plugins](https://github.com/surgicalcoder/Tether.Plugins) has been set up for additional plugins.
+A separate GitHub project - [Tether.Plugins](https://github.com/surgicalcoder/Tether.Plugins) has been set up for additional plugins.
 
 ### Self updating Plugins! [0.0.8+] **Disabled in v2 temporarily**
 
 A new feature of Tether 0.0.8 is automatically checking for updates to plugins, every 5 mins, from a URL you specify in the configuration file like so:
 
       "PluginManifestLocation": "~/PluginManifest.json"
-      
+
 This will go and check that file location. There are 3 ways to specify a path - an absolute local path, a relative path, and a URL.
 
-Every 5 minutes, Tether will check the plugins loaded, against the plugin manifest file - it will perform a regex match against the name (so you can have one manifest file targetting many machines!), then automatically download and extract the file, and restart itself.
+Every 5 minutes, Tether will check the plugins loaded, against the plugin manifest file - it will perform a regex match against the name (so you can have one manifest file targeting many machines!), then automatically download and extract the file, and restart itself.
 
 ### Plugin configuration data [0.0.13+] **Disabled in v2 temporarily**
 
 Plugins can now make use of Configuration Data - by implementing the `IRequireConfigurationData` interface - the `LoadConfigurationData(dynamic data)` method will be called before the check is called, so you can load all the configuration data you need.
 
-Configuration data files live in the `plugins` directory, and are named `(Full Class Name).json` i.e. `Tether.SamplePlugin.ASPNet.json` and will be loaded automatically on start. 
+Configuration data files live in the `plugins` directory, and are named `(Full Class Name).json` i.e. `Tether.SamplePlugin.ASPNet.json` and will be loaded automatically on start.
 
 ## Version History
 
 * [2.0.0] **BREAKING CHANGES!** Version 2 contains the following breaking changes:
     * Plugins are now loaded in their own AppDomain. This will allow future work to unload an AppDomain and reload plugins, to dynamically load new versions of plugins, without restarting the entire process. This will also allow for unloading/reloading AppDomains due to memory-leaky plugins.
-    * Support for resending of old telemetry data to SD, incase of transient connectivity issues. 
+    * Support for resending of old telemetry data to SD, in case of transient connectivity issues.
     * Tether now requires Admin rights to run.
 * [1.0.34] Issue found by Steve Hurley @ Server Density with base IIS check not being run.
 * [1.0.33] Issue with loading dependencies from DLL's, should be resolved now.
@@ -129,4 +143,6 @@ Configuration data files live in the `plugins` directory, and are named `(Full C
 ## Build
 Builds are being run, thanks to AppVeyor!
 
-[![Build status](https://ci.appveyor.com/api/projects/status/0a6937115b1hwdtv?svg=true)](https://ci.appveyor.com/project/surgicalcoder/tether)
+[![Build status](https://ci.appveyor.com/api/projects/status/meg0i5wsmtvi7r6a?svg=true)](https://ci.appveyor.com/project/serverdensity/tether)
+
+
